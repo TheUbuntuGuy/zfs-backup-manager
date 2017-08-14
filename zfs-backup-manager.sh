@@ -6,7 +6,8 @@
 
 # ===== Config Options =====
 
-# The pattern to look for when finding snapshots to backup.
+# The naming pattern to look for when finding snapshots to backup.
+# The pattern does not need to be sortable, as snapshot creation time is used for ordering.
 SNAPSHOT_PATTERN="zfs-auto-snap_daily"
 
 # This property must be present with the correct value on a dataset for it to be backed up.
@@ -15,14 +16,15 @@ SNAPSHOT_PATTERN="zfs-auto-snap_daily"
 #          The pool name is stripped from the path.
 #          e.g. With "c" having the "path" mode:
 #          /sourcepool/a/b/c backs up to /backuppool/a/b/c
-# nested - Nests the dataset on the destination pool within a new dataset set by the
+# nested - Nests the dataset on the destination pool within a dataset set by the
 #          NEST_NAME_PROPERTY, preserving the rest of the path as in the "path" option.
-#          The pool name is not stripped from the path.
+#          The pool name is not stripped from the path. The nested dataset must already exist.
 #          e.g. With the nested name set to "nest" and "sourcepool" having the "nested" mode:
 #          /sourcepool/a/b/c backs up to /backuppool/nest/sourcepool/a/b/c
 # root   - Special handling for root filesystems. Performs a backup similar to
 #          the "nested" mode, however all mountpoints are set to "none" during the receive.
-#          The pool name is not stripped from the path.
+#          The pool name is not stripped from the path. The nested dataset must already exist.
+#          This option can only be set on top level pool datasets.
 #          e.g. With the nested name set to "system1" and "rootpool" having the "root" mode:
 #          /rootpool/a/b/c backs up to /backuppool/system1/rootpool/a/b/c
 MODE_PROPERTY="furneaux:autobackup"
@@ -35,7 +37,7 @@ NEST_NAME_PROPERTY="furneaux:backupnestname"
 #REMOTE_POOL="btank"
 REMOTE_POOL="testdest"
 
-# Backup location hostname. Set to "" for backups on the same machine.
+# Backup machine hostname. Set to "" for backups on the same machine.
 #REMOTE_HOST="darwin"
 REMOTE_HOST=""
 
@@ -46,9 +48,21 @@ REMOTE_HOST=""
 REMOTE_USER="root"
 
 # How to transfer data over the network. Set to either "ssh" or "mbuffer".
-# mbuffer is faster, but not encrypted; best for local networks.
+# mbuffer uses raw TCP with buffers on either side and is therefore much faster.
+# However mbuffer is not encrypted and as such should only be used on local networks.
 # mbuffer still requires SSH for remote system login.
 REMOTE_MODE="mbuffer"
+
+# The size of the blocks of data sent by mbuffer. It is usually best to set this the same as the
+# ZFS recordsize. TODO use "auto" to set this automatically per dataset?
+MBUFFER_BLOCK_SIZE="128k"
+
+# Port for mbuffer to bind to when receiving data.
+MBUFFER_PORT="9090"
+
+# Size of mbuffer's memory buffer on the sending and receiving side.
+MBUFFER_BUFF_SIZE="1G"
+
 # ===== End of Config Options =====
 
 LOCK_FILE="/var/run/zfs-backup-manager.lock"
@@ -60,10 +74,8 @@ MBUFFER_CMD="/usr/bin/mbuffer"
 REMOTE_ZFS_CMD="$ZFS_CMD"
 LIST_DATASETS_TO_BACKUP_CMD="$ZFS_CMD get -s local -H -o name,value $MODE_PROPERTY"
 NEST_NAME=""
-MBUFFER_BLOCK_SIZE="128k"
-MBUFFER_PORT="9090"
-MBUFFER_BUFF_SIZE="1G"
 
+# Error codes this script returns
 SUCCESS=0
 LOCK_FILE_PRESENT=1
 NO_DATASETS=2
@@ -89,7 +101,7 @@ print_help () {
     echo "  --ignore-lock             Ignore the presence of a lock file and run regardless."
     echo "                            This option is dangerous and should only be used to"
     echo "                            clear a previous failure."
-    exit 0
+    exit $SUCCESS
 }
 
 sanitize_config () {
@@ -378,4 +390,4 @@ release_lock
 log ""
 log "Backup process completed successfully. Exiting."
 
-exit 0
+exit $SUCCESS
