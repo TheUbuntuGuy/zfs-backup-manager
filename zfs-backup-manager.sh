@@ -32,10 +32,12 @@ MODE_PROPERTY="furneaux:autobackup"
 NEST_NAME_PROPERTY="furneaux:backupnestname"
 
 # Pool on the destination for backups to be received into.
-REMOTE_POOL="btank"
+#REMOTE_POOL="btank"
+REMOTE_POOL="testdest"
 
 # Backup location hostname. Set to "" for backups on the same machine.
-REMOTE_HOST="darwin"
+#REMOTE_HOST="darwin"
+REMOTE_HOST=""
 
 # User on the remote destination machine. Need not be set unless REMOTE_HOST is set.
 # There must be an SSH key already installed for passwordless authentication into this account.
@@ -57,7 +59,6 @@ SSH_CMD="/usr/bin/ssh"
 MBUFFER_CMD="/usr/bin/mbuffer"
 REMOTE_ZFS_CMD="$ZFS_CMD"
 LIST_DATASETS_TO_BACKUP_CMD="$ZFS_CMD get -s local -H -o name,value $MODE_PROPERTY"
-GET_DATASET_NEST_NAME_CMD="$ZFS_CMD get -s local -H -o value $NEST_NAME_PROPERTY"
 NEST_NAME=""
 MBUFFER_BLOCK_SIZE="128k"
 MBUFFER_PORT="9090"
@@ -102,7 +103,7 @@ sanitize_config () {
     if [ "$REMOTE_POOL" == "" ]; then
         IS_INVALID=1
     fi
-    if [ "$REMOTE_MODE" == "" || "$REMOTE_MODE" != "ssh" && "$REMOTE_MODE" != "mbuffer" ]; then
+    if [ "$REMOTE_MODE" == "" ] || [ "$REMOTE_MODE" != "ssh" ] && [ "$REMOTE_MODE" != "mbuffer" ]; then
         IS_INVALID=1
     fi
     if [ "$REMOTE_HOST" != "" ]; then
@@ -136,6 +137,7 @@ get_lock () {
         exit $LOCK_FILE_PRESENT
     elif [ $IGNORE_LOCK -eq 1 ]; then
         log "Warning: Ignoring lock file"
+        echo $$ > $LOCK_FILE
     else
         echo $$ > $LOCK_FILE
     fi
@@ -148,7 +150,7 @@ release_lock () {
 check_for_datasets () {
     COUNT=$($LIST_DATASETS_TO_BACKUP_CMD | wc -l)
     if [ $COUNT -lt 1 ]; then
-        log "Error: Could not find any datasets with the \"$MODE_PROPERTY\" property set!"
+        log "Error: Could not find any datasets with the \"$MODE_PROPERTY\" property set."
         log "Nothing to do, aborting."
         release_lock
         exit $NO_DATASETS
@@ -164,14 +166,18 @@ run_backup () {
 
     case $MODE in
     path)
-        DESTINATION_DATASET="$REMPOOL/$DATASET_NO_POOL"
+        DESTINATION_DATASET="$REMOTE_POOL/$DATASET_NO_POOL"
+        DESTINATION="$REMOTE_POOL"
         ZFS_OPTIONS="-d"
         ;;
     nested)
-        DESTINATION_DATASET="$REMPOOL/$NEST_NAME/$DATASET_NO_POOL"
+        DESTINATION_DATASET="$REMOTE_POOL/$NEST_NAME/$DATASET_NO_POOL"
+        DESTINATION="$REMOTE_POOL/$NEST_NAME/$DATASET_NO_POOL"
         ;;
     root)
-        DESTINATION_DATASET="$REMPOOL/$NEST_NAME/$DATASET_NO_POOL"
+        DESTINATION_DATASET="$REMOTE_POOL/$NEST_NAME/$DATASET_NO_POOL"
+        DESTINATION="$REMOTE_POOL/$NEST_NAME/$DATASET_NO_POOL"
+        ZFS_OPTIONS="-o mountpoint=none"
         ;;
     *)
         log "Error: Unsupported backup mode invoked."
@@ -180,11 +186,12 @@ run_backup () {
         ;;
     esac
 
-    log "Processing dataset: $DATASET..."
+    log ""
+    log "Processing dataset: $DATASET"
 
     LOCAL_HEAD="$($ZFS_CMD list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $SNAPSHOT_PATTERN | head -1)"
     if [ -z "$LOCAL_HEAD" ]; then
-        log "Error: No snapshots matching pattern \"$SNAPSHOT_PATTERN\" found in dataset $DATASET."
+        log "Error: No snapshots matching pattern \"$SNAPSHOT_PATTERN\" found in dataset \"$DATASET\"."
         log "Aborting."
         exit $NO_PATTERN_MATCH
     fi
@@ -194,17 +201,21 @@ run_backup () {
 
     if [ "$REMOTE_HOST" == "" ]; then
         REMOTE_HEAD="$($ZFS_CMD list -t snapshot -H -S creation -o name -d 1 $DESTINATION_DATASET | grep $SNAPSHOT_PATTERN | head -1)"
-        log "Error: Could not fetch local snapshot list on destination pool."
-        log "Aborting."
-        exit $COMM_ERROR
+        if [ $? -ne 0 ]; then
+            log "Error: Could not fetch local snapshot list on destination pool."
+            log "Aborting."
+            exit $COMM_ERROR
+        fi
     else
         REMOTE_HEAD="$($SSH_CMD -n $REMOTE_USER@$REMOTE_HOST $REMOTE_ZFS_CMD list -t snapshot -H -S creation -o name -d 1 $DESTINATION_DATASET | grep $SNAPSHOT_PATTERN | head -1)"
-        log "Error: Could not fetch remote snapshot list on destination pool."
-        log "Aborting."
-        exit $COMM_ERROR
+        if [ $? -ne 0 ]; then
+            log "Error: Could not fetch remote snapshot list on destination pool."
+            log "Aborting."
+            exit $COMM_ERROR
+        fi
     fi
     if [ -z "$REMOTE_HEAD" ]; then
-        log "Error: No snapshots matching pattern \"$SNAPSHOT_PATTERN\" found in dataset $DATASET on remote."
+        log "Error: No snapshots matching pattern \"$SNAPSHOT_PATTERN\" found in dataset \"$DATASET\" on remote."
         log "Aborting."
         exit $NO_PATTERN_MATCH
     fi
@@ -233,40 +244,61 @@ run_backup () {
         exit $TIME_SANITY_FAIL
     fi
 
-    if [ "$REMOTE_MODE" == "ssh" ]; then
-        RUN_CMD="$ZFS_CMD send -R -I $REMOTE_SNAP $DATASET@$LOCAL_SNAP | $SSH_CMD -o Ciphers=arcfour $REMOTE_USER@$REMOTE_HOST $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $REMOTE_POOL"
+    log "Performing send/receive..."
+
+    if [ "$REMOTE_HOST" == "" ]; then
+        RUN_CMD_SEND="$ZFS_CMD send -R -I $REMOTE_SNAP $DATASET@$LOCAL_SNAP"
+        RUN_CMD_RECV="$ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
 
         if [ $SIMULATE -eq 1 ]; then
-            log "Simulation: Would have executed: $RUN_CMD"
+            log "Running in simulation. Not executing: $RUN_CMD_SEND | $RUN_CMD_RECV"
         else
-            $RUN_CMD
+            $RUN_CMD_SEND | $RUN_CMD_RECV
             if [ $? -ne 0 ]; then
-                log "Error: Backing up $DATASET@$LOCAL_SNAP failed."
+                log "Error: Backing up \"$DATASET@$LOCAL_SNAP\" failed."
                 log "Aborting."
                 exit $SEND_RECV_FAIL
             fi
         fi
-    elif [ "$REMOTE_MODE" == "mbuffer" ]; then
-        REMOTE_RUN_CMD="$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$MBUFFER_CMD -s $MBUFFER_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -I $MBUFFER_PORT | $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $REMOTE_POOL\" &"
-        LOCAL_RUN_CMD="$ZFS_CMD send -R -I $REMOTE_SNAP $DATASET@$LOCAL_SNAP | $MBUFFER_CMD -s $MBUFFER_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -O $REMOTE_HOST:$MBUFFER_PORT"
-        if [ $SIMULATE -eq 1 ]; then
-            log "Simulation: Would have executed: $REMOTE_RUN_CMD"
-            log "Simulation: Would have executed: $LOCAL_RUN_CMD"
-        else
-            $REMOTE_RUN_CMD
-            sleep 3
-            $LOCAL_RUN_CMD
-            if [ $? -ne 0 ]; then
-                log "Error: Backing up $DATASET@$LOCAL_SNAP failed."
-                log "Aborting."
-                exit $SEND_RECV_FAIL
+    else
+        if [ "$REMOTE_MODE" == "ssh" ]; then
+            RUN_CMD_SEND="$ZFS_CMD send -R -I $REMOTE_SNAP $DATASET@$LOCAL_SNAP"
+            RUN_CMD_RECV="$SSH_CMD -o Ciphers=arcfour $REMOTE_USER@$REMOTE_HOST $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
+
+            if [ $SIMULATE -eq 1 ]; then
+                log "Running in simulation. Not executing: $RUN_CMD_SEND | $RUN_CMD_RECV"
+            else
+                $RUN_CMD_SEND | $RUN_CMD_RECV
+                if [ $? -ne 0 ]; then
+                    log "Error: Backing up \"$DATASET@$LOCAL_SNAP\" failed."
+                    log "Aborting."
+                    exit $SEND_RECV_FAIL
+                fi
+            fi
+        elif [ "$REMOTE_MODE" == "mbuffer" ]; then
+            # TODO not sure this pipe will work correctly...
+            REMOTE_RUN_CMD="$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$MBUFFER_CMD -s $MBUFFER_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -I $MBUFFER_PORT | $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION\" &"
+            LOCAL_RUN_CMD_SEND="$ZFS_CMD send -R -I $REMOTE_SNAP $DATASET@$LOCAL_SNAP"
+            LOCAL_RUN_CMD_MBUFFER="$MBUFFER_CMD -s $MBUFFER_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -O $REMOTE_HOST:$MBUFFER_PORT"
+            if [ $SIMULATE -eq 1 ]; then
+                log "Running in simulation. Not executing: $REMOTE_RUN_CMD"
+                log "Running in simulation. Not executing: $LOCAL_RUN_CMD_SEND | $LOCAL_RUN_CMD_MBUFFER"
+            else
+                $REMOTE_RUN_CMD
+                sleep 3
+                $LOCAL_RUN_CMD_SEND | $LOCAL_RUN_CMD_MBUFFER
+                if [ $? -ne 0 ]; then
+                    log "Error: Backing up \"$DATASET@$LOCAL_SNAP\" failed."
+                    log "Aborting."
+                    exit $SEND_RECV_FAIL
+                fi
             fi
         fi
     fi
 }
 
 check_nest_name () {
-    NEST_NAME=$($GET_DATASET_NEST_NAME_CMD)
+    NEST_NAME=$($ZFS_CMD get -s local -H -o value $NEST_NAME_PROPERTY $DATASET)
     if [ $? -ne 0 ]; then
         log "Error: Property \"$NEST_NAME_PROPERTY\" is not set on dataset \"$DATASET\"."
         log "Aborting."
@@ -280,7 +312,6 @@ check_nest_name () {
 }
 
 process_datasets () {
-    $LIST_DATASETS_TO_BACKUP_CMD |
     while read DATASET MODE
     do
         case $MODE in
@@ -293,7 +324,7 @@ process_datasets () {
             ;;
         root)
             check_nest_name
-            if [ "$dataset" == "$(basename $dataset)" ]; then
+            if [ "$DATASET" == "$(basename $DATASET)" ]; then
                 run_backup $DATASET $MODE
             else
                 log "Error: Dataset \"$DATASET\" is set to mode \"$MODE\" but is not a root dataset."
@@ -307,7 +338,7 @@ process_datasets () {
             exit $MODE_INVALID
             ;;
         esac
-    done
+    done < <($LIST_DATASETS_TO_BACKUP_CMD)
 }
 
 while [[ $# -gt 0 ]]
@@ -316,6 +347,7 @@ key="$1"
 case $key in
     --simulate)
         SIMULATE=1
+        log "Simulating write commands"
     ;;
     --ignore-lock)
         IGNORE_LOCK=1
@@ -342,5 +374,8 @@ check_for_datasets
 process_datasets
 
 release_lock
+
+log ""
+log "Backup process completed successfully. Exiting."
 
 exit 0
