@@ -39,7 +39,7 @@ REMOTE_POOL="testdest"
 
 # Backup machine hostname. Set to "" for backups on the same machine.
 #REMOTE_HOST="darwin"
-REMOTE_HOST=""
+REMOTE_HOST="localhost"
 
 # User on the remote destination machine. Need not be set unless REMOTE_HOST is set.
 # There must be an SSH key already installed for passwordless authentication into this account.
@@ -51,6 +51,7 @@ REMOTE_USER="root"
 # mbuffer uses raw TCP with buffers on either side and is therefore much faster.
 # However mbuffer is not encrypted and as such should only be used on local networks.
 # mbuffer still requires SSH for remote system login.
+#REMOTE_MODE="mbuffer"
 REMOTE_MODE="mbuffer"
 
 # The size of the blocks of data sent by mbuffer. It is usually best to set this the same as the
@@ -63,6 +64,10 @@ MBUFFER_PORT="9090"
 # Size of mbuffer's memory buffer on the sending and receiving side.
 MBUFFER_BUFF_SIZE="1G"
 
+# Options for the ssh session used during send/receive.
+#SSH_OPTIONS="-o Ciphers=arcfour"
+SSH_OPTIONS=""
+
 # ===== End of Config Options =====
 
 LOCK_FILE="/var/run/zfs-backup-manager.lock"
@@ -72,8 +77,8 @@ ZFS_CMD="/sbin/zfs"
 SSH_CMD="/usr/bin/ssh"
 MBUFFER_CMD="/usr/bin/mbuffer"
 REMOTE_ZFS_CMD="$ZFS_CMD"
-LIST_DATASETS_TO_BACKUP_CMD="$ZFS_CMD get -s local -H -o name,value $MODE_PROPERTY"
 NEST_NAME=""
+RECEIVE_LOG_FILE="/tmp/zfs-backup-manager-sr.log"
 
 # Error codes this script returns
 SUCCESS=0
@@ -101,6 +106,22 @@ print_help () {
     echo "  --ignore-lock             Ignore the presence of a lock file and run regardless."
     echo "                            This option is dangerous and should only be used to"
     echo "                            clear a previous failure."
+    echo ""
+    echo "The following options override those set in the script."
+    echo "See the script header for a detailed explanation of each option with examples."
+    echo "  --snapshot-pattern        The pattern to search for in snapshot names to backup."
+    echo "  --mode-property           The ZFS property which contains the backup mode."
+    echo "  --nest-name-property      The ZFS property which contains the dataset name to nest within."
+    echo "  --remote-pool             The destination pool name."
+    echo "  --remote-host             The hostname of the destination. Pass \"\" for the local machine."
+    echo "  --remote-user             The user to login as on the destination."
+    echo "  --remote-mode             The transfer mode to a remote system. (ssh/mbuffer)"
+    echo "  --mbuffer-block-size      The block size to set when using mbuffer."
+    echo "  --mbuffer-port            The port for mbuffer to listen on."
+    echo "  --mbuffer-buffer-size     The size of the send and receive buffers when using mbuffer."
+    echo "  --ssh-options             Additional options to pass to SSH."
+    echo ""
+    echo "This script must be run as root."
     exit $SUCCESS
 }
 
@@ -275,7 +296,7 @@ run_backup () {
     else
         if [ "$REMOTE_MODE" == "ssh" ]; then
             RUN_CMD_SEND="$ZFS_CMD send -R -I $REMOTE_SNAP $DATASET@$LOCAL_SNAP"
-            RUN_CMD_RECV="$SSH_CMD -o Ciphers=arcfour $REMOTE_USER@$REMOTE_HOST $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
+            RUN_CMD_RECV="$SSH_CMD $SSH_OPTIONS $REMOTE_USER@$REMOTE_HOST $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
 
             if [ $SIMULATE -eq 1 ]; then
                 log "Running in simulation. Not executing: $RUN_CMD_SEND | $RUN_CMD_RECV"
@@ -288,18 +309,23 @@ run_backup () {
                 fi
             fi
         elif [ "$REMOTE_MODE" == "mbuffer" ]; then
-            # TODO not sure this pipe will work correctly...
-            REMOTE_RUN_CMD="$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$MBUFFER_CMD -s $MBUFFER_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -I $MBUFFER_PORT | $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION\" &"
+            REMOTE_RUN_CMD="$SSH_CMD $REMOTE_USER@$REMOTE_HOST $MBUFFER_CMD -s $MBUFFER_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -I $MBUFFER_PORT | $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
             LOCAL_RUN_CMD_SEND="$ZFS_CMD send -R -I $REMOTE_SNAP $DATASET@$LOCAL_SNAP"
             LOCAL_RUN_CMD_MBUFFER="$MBUFFER_CMD -s $MBUFFER_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -O $REMOTE_HOST:$MBUFFER_PORT"
             if [ $SIMULATE -eq 1 ]; then
                 log "Running in simulation. Not executing: $REMOTE_RUN_CMD"
                 log "Running in simulation. Not executing: $LOCAL_RUN_CMD_SEND | $LOCAL_RUN_CMD_MBUFFER"
             else
-                $REMOTE_RUN_CMD
+                $REMOTE_RUN_CMD > $RECEIVE_LOG_FILE 2>&1 &
+                SUBPID=$!
                 sleep 3
                 $LOCAL_RUN_CMD_SEND | $LOCAL_RUN_CMD_MBUFFER
-                if [ $? -ne 0 ]; then
+                STATUS=$?
+                log ""
+                log "Receive Log:"
+                wait $SUBPID
+                cat $RECEIVE_LOG_FILE
+                if [ $STATUS -ne 0 ]; then
                     log "Error: Backing up \"$DATASET@$LOCAL_SNAP\" failed."
                     log "Aborting."
                     exit $SEND_RECV_FAIL
@@ -320,6 +346,12 @@ check_nest_name () {
         log "Error: Property \"$NEST_NAME_PROPERTY\" is empty on dataset \"$DATASET\"."
         log "Aborting."
         exit $NEST_NAME_MISSING
+    fi
+}
+
+remove_tmp_files () {
+    if [ -e $RECEIVE_LOG_FILE ]; then
+        rm $RECEIVE_LOG_FILE
     fi
 }
 
@@ -367,6 +399,50 @@ case $key in
     -h|--help)
         print_help
     ;;
+    --snapshot-pattern)
+        SNAPSHOT_PATTERN="$2"
+        shift
+    ;;
+    --mode-property)
+        MODE_PROPERTY="$2"
+        shift
+    ;;
+    --nest-name-property)
+        NEST_NAME_PROPERTY="$2"
+        shift
+    ;;
+    --remote-pool)
+        REMOTE_POOL="$2"
+        shift
+    ;;
+    --remote-host)
+        REMOTE_HOST="$2"
+        shift
+    ;;
+    --remote-user)
+        REMOTE_USER="$2"
+        shift
+    ;;
+    --remote-mode)
+        REMOTE_MODE="$2"
+        shift
+    ;;
+    --mbuffer-block-size)
+        MBUFFER_BLOCK_SIZE="$2"
+        shift
+    ;;
+    --mbuffer-port)
+        MBUFFER_PORT="$2"
+        shift
+    ;;
+    --mbuffer-buffer-size)
+        MBUFFER_BUFF_SIZE="$2"
+        shift
+    ;;
+    --ssh-options)
+        SSH_OPTIONS="$2"
+        shift
+    ;;
     *)
         log "Error: Invalid argument: \"$key\""
         print_help
@@ -374,6 +450,10 @@ case $key in
 esac
 shift
 done
+
+LIST_DATASETS_TO_BACKUP_CMD="$ZFS_CMD get -s local -H -o name,value $MODE_PROPERTY"
+
+log "ZFS Backup Manager Starting..."
 
 sanitize_config
 
@@ -386,6 +466,8 @@ check_for_datasets
 process_datasets
 
 release_lock
+
+remove_tmp_files
 
 log ""
 log "Backup process completed successfully. Exiting."
