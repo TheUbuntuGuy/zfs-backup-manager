@@ -8,7 +8,8 @@
 
 # The naming pattern to look for when finding snapshots to backup.
 # The pattern does not need to be sortable, as snapshot creation time is used for ordering.
-SNAPSHOT_PATTERN="zfs-auto-snap_daily"
+#SNAPSHOT_PATTERN="zfs-auto-snap_daily"
+SNAPSHOT_PATTERN=""
 
 # This property must be present with the correct value on a dataset for it to be backed up.
 # Valid values are "path", "nested", and "root"
@@ -27,42 +28,48 @@ SNAPSHOT_PATTERN="zfs-auto-snap_daily"
 #          This option can only be set on top level pool datasets.
 #          e.g. With the nested name set to "system1" and "rootpool" having the "root" mode:
 #          /rootpool/a/b/c backs up to /backuppool/system1/rootpool/a/b/c
-MODE_PROPERTY="furneaux:autobackup"
+#MODE_PROPERTY="furneaux:autobackup"
+MODE_PROPERTY=""
 
 # The property which contains the name to nest the dataset under on the destination pool.
 # Only needs to be set if one or more datasets have the "nested" or "root" modes.
-NEST_NAME_PROPERTY="furneaux:backupnestname"
+#NEST_NAME_PROPERTY="furneaux:backupnestname"
+NEST_NAME_PROPERTY=""
 
 # Pool on the destination for backups to be received into.
 #REMOTE_POOL="btank"
-REMOTE_POOL="testdest"
+REMOTE_POOL=""
 
 # Backup machine hostname. Set to "" for backups on the same machine.
 #REMOTE_HOST="darwin"
-REMOTE_HOST="localhost"
+REMOTE_HOST=""
 
 # User on the remote destination machine. Need not be set unless REMOTE_HOST is set.
 # There must be an SSH key already installed for passwordless authentication into this account.
 # This user must also have the rights to run ZFS commands via sudo without password authentication.
 # If using root, sudo is not used.
-REMOTE_USER="root"
+#REMOTE_USER="root"
+REMOTE_USER=""
 
 # How to transfer data over the network. Set to either "ssh" or "mbuffer".
 # mbuffer uses raw TCP with buffers on either side and is therefore much faster.
 # However mbuffer is not encrypted and as such should only be used on local networks.
 # mbuffer still requires SSH for remote system login.
 #REMOTE_MODE="mbuffer"
-REMOTE_MODE="mbuffer"
+REMOTE_MODE=""
 
 # The size of the blocks of data sent by mbuffer. It is usually best to set this the same as the
-# ZFS recordsize. TODO use "auto" to set this automatically per dataset?
-MBUFFER_BLOCK_SIZE="128k"
+# ZFS recordsize. Use "auto" to set this automatically to the recordsize per dataset.
+MBUFFER_BLOCK_SIZE="auto"
+#MBUFFER_BLOCK_SIZE=""
 
 # Port for mbuffer to bind to when receiving data.
-MBUFFER_PORT="9090"
+#MBUFFER_PORT="9090"
+MBUFFER_PORT=""
 
 # Size of mbuffer's memory buffer on the sending and receiving side.
-MBUFFER_BUFF_SIZE="1G"
+#MBUFFER_BUFF_SIZE="1G"
+MBUFFER_BUFF_SIZE=""
 
 # Options for the ssh session used during send/receive.
 #SSH_OPTIONS="-o Ciphers=arcfour"
@@ -116,7 +123,7 @@ print_help () {
     echo "  --remote-host             The hostname of the destination. Pass \"\" for the local machine."
     echo "  --remote-user             The user to login as on the destination."
     echo "  --remote-mode             The transfer mode to a remote system. (ssh/mbuffer)"
-    echo "  --mbuffer-block-size      The block size to set when using mbuffer."
+    echo "  --mbuffer-block-size      The block size to set when using mbuffer, or \"auto\" to use recordsize."
     echo "  --mbuffer-port            The port for mbuffer to listen on."
     echo "  --mbuffer-buffer-size     The size of the send and receive buffers when using mbuffer."
     echo "  --ssh-options             Additional options to pass to SSH."
@@ -136,7 +143,16 @@ sanitize_config () {
     if [ "$REMOTE_POOL" == "" ]; then
         IS_INVALID=1
     fi
-    if [ "$REMOTE_MODE" == "" ] || [ "$REMOTE_MODE" != "ssh" ] && [ "$REMOTE_MODE" != "mbuffer" ]; then
+    if [ "$MBUFFER_BLOCK_SIZE" == "" ]; then
+        IS_INVALID=1
+    fi
+    if [ "$MBUFFER_PORT" == "" ]; then
+        IS_INVALID=1
+    fi
+    if [ "$MBUFFER_BUFF_SIZE" == "" ]; then
+        IS_INVALID=1
+    fi
+    if [ "$REMOTE_MODE" != "ssh" ] && [ "$REMOTE_MODE" != "mbuffer" ]; then
         IS_INVALID=1
     fi
     if [ "$REMOTE_HOST" != "" ]; then
@@ -221,6 +237,11 @@ run_backup () {
 
     log ""
     log "Processing dataset: $DATASET"
+    log "Using mode: $MODE"
+
+    if [ $MODE == "nested" ] || [ $MODE == "root" ]; then
+        log "Nesting in: $NEST_NAME"
+    fi
 
     LOCAL_HEAD="$($ZFS_CMD list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $SNAPSHOT_PATTERN | head -1)"
     if [ -z "$LOCAL_HEAD" ]; then
@@ -269,8 +290,12 @@ run_backup () {
         return 0
     fi
 
-    REMOTE_SNAP_TIME=$($ZFS_CMD get -Hp -o value creation $DATASET@$REMOTE_SNAP)
     LOCAL_SNAP_TIME=$($ZFS_CMD get -Hp -o value creation $DATASET@$LOCAL_SNAP)
+    if [ "$REMOTE_HOST" == "" ]; then
+        REMOTE_SNAP_TIME=$($ZFS_CMD get -Hp -o value creation $DESTINATION_DATASET@$REMOTE_SNAP)
+    else
+        REMOTE_SNAP_TIME=$($SSH_CMD -n $REMOTE_USER@$REMOTE_HOST $REMOTE_ZFS_CMD get -Hp -o value creation $DESTINATION_DATASET@$REMOTE_SNAP)
+    fi
     if [ $LOCAL_SNAP_TIME -lt $REMOTE_SNAP_TIME ]; then
         log "Error: Local snapshot \"$LOCAL_SNAP\" is older than \"$REMOTE_SNAP\"."
         log "Aborting."
@@ -309,9 +334,16 @@ run_backup () {
                 fi
             fi
         elif [ "$REMOTE_MODE" == "mbuffer" ]; then
-            REMOTE_RUN_CMD="$SSH_CMD $REMOTE_USER@$REMOTE_HOST $MBUFFER_CMD -s $MBUFFER_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -I $MBUFFER_PORT | $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
+            if [ $MBUFFER_BLOCK_SIZE == "auto" ]; then
+                MBUFFER_REAL_BLOCK_SIZE="$($ZFS_CMD get -H -o value recordsize $DATASET)"
+            else
+                MBUFFER_REAL_BLOCK_SIZE="$MBUFFER_BLOCK_SIZE"
+            fi
+            log "Using blocksize: $MBUFFER_REAL_BLOCK_SIZE"
+
+            REMOTE_RUN_CMD="$SSH_CMD $REMOTE_USER@$REMOTE_HOST $MBUFFER_CMD -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -I $MBUFFER_PORT | $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
             LOCAL_RUN_CMD_SEND="$ZFS_CMD send -R -I $REMOTE_SNAP $DATASET@$LOCAL_SNAP"
-            LOCAL_RUN_CMD_MBUFFER="$MBUFFER_CMD -s $MBUFFER_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -O $REMOTE_HOST:$MBUFFER_PORT"
+            LOCAL_RUN_CMD_MBUFFER="$MBUFFER_CMD -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -O $REMOTE_HOST:$MBUFFER_PORT"
             if [ $SIMULATE -eq 1 ]; then
                 log "Running in simulation. Not executing: $REMOTE_RUN_CMD"
                 log "Running in simulation. Not executing: $LOCAL_RUN_CMD_SEND | $LOCAL_RUN_CMD_MBUFFER"
@@ -336,6 +368,12 @@ run_backup () {
 }
 
 check_nest_name () {
+    if [ "$NEST_NAME_PROPERTY" == "" ]; then
+        log "Error: Nest name configuration option is not set."
+        log "Aborting."
+        exit $CONFIG_INVALID
+    fi
+
     NEST_NAME=$($ZFS_CMD get -s local -H -o value $NEST_NAME_PROPERTY $DATASET)
     if [ $? -ne 0 ]; then
         log "Error: Property \"$NEST_NAME_PROPERTY\" is not set on dataset \"$DATASET\"."
@@ -360,6 +398,11 @@ process_datasets () {
     do
         case $MODE in
         path)
+            if [ "$DATASET" == "$(basename $DATASET)" ]; then
+                log "Error: Dataset \"$DATASET\" is set to mode \"$MODE\" but is a top-level dataset."
+                log "Aborting."
+                exit $ROOT_INVALID
+            fi
             run_backup $DATASET $MODE
             ;;
         nested)
