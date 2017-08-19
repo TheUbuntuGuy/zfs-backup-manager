@@ -90,6 +90,7 @@ MISSING_SNAPSHOT=9
 COMM_ERROR=10
 TIME_SANITY_FAIL=11
 SEND_RECV_FAIL=12
+LOCK_WRITE_FAIL=13
 
 log () {
     echo "[ZFS Backup Manager] $1"
@@ -182,9 +183,14 @@ get_lock () {
         exit $LOCK_FILE_PRESENT
     elif [ $IGNORE_LOCK -eq 1 ]; then
         log "Warning: Ignoring lock file"
-        echo $$ > $LOCK_FILE
-    else
-        echo $$ > $LOCK_FILE
+    fi
+
+    echo $$ > $LOCK_FILE
+
+    if [ $? -ne 0 ]; then
+        log "Error: Lock file could not be written."
+        log "Aborting."
+        exit $LOCK_WRITE_FAIL
     fi
 }
 
