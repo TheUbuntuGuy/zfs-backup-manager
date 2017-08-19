@@ -36,25 +36,24 @@ This script must be run as root.
 ```
 
 ## Sample Output
-This is an example of backing up a single dataset using `mbuffer` for transport, and the `path` mode.
+This is an example of backing up a single dataset using `mbuffer` for transport, and the `root` mode.
 ```
 [ZFS Backup Manager] ZFS Backup Manager v0.0.1 Starting...
 [ZFS Backup Manager]
-[ZFS Backup Manager] Processing dataset: testsource_138975/a
-[ZFS Backup Manager] Using mode: path
+[ZFS Backup Manager] Processing dataset: testsource_138975
+[ZFS Backup Manager] Using mode: root
+[ZFS Backup Manager] Nesting in: n
 [ZFS Backup Manager] Local HEAD is: zfs-auto-snap_daily4
 [ZFS Backup Manager] Remote HEAD is: zfs-auto-snap_daily1
 [ZFS Backup Manager] Performing send/receive...
-[ZFS Backup Manager] Using blocksize: 128K
-
-summary:  5.0 KiByte in  0.0sec - average of 20.7 MiB/s
-[ZFS Backup Manager]
+[ZFS Backup Manager] Using blocksize: 128k
+in @  0.0 KiB/s, out @ 1790 KiB/s, 29.2 MiB total, buffer   0% full
+summary: 30.1 MiByte in 26.6sec - average of 1157 KiB/s
+[ZFS Backup Manager] 
 [ZFS Backup Manager] Receive Log:
-
-summary:  5.0 KiByte in  0.0sec - average of 36.2 MiB/s
-receiving incremental stream of testsource_138975/a@zfs-auto-snap_daily3 into testdest_138975/a@zfs-auto-snap_daily3
-received 312B stream in 1 seconds (312B/sec)
-receiving incremental stream of testsource_138975/a@zfs-auto-snap_daily4 into testdest_138975/a@zfs-auto-snap_daily4
+receiving incremental stream of testsource_138975@zfs-auto-snap_daily3 into testdest_138975/n/testsource_138975@zfs-auto-snap_daily3
+received 30.1M stream in 30 seconds (1.00M/sec)
+receiving incremental stream of testsource_138975@zfs-auto-snap_daily4 into testdest_138975/n/testsource_138975@zfs-auto-snap_daily4
 received 312B stream in 1 seconds (312B/sec)
 [ZFS Backup Manager]
 [ZFS Backup Manager] Backup process completed successfully. Exiting.
