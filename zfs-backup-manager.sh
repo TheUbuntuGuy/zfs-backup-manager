@@ -11,6 +11,7 @@
 SNAPSHOT_PATTERN="zfs-auto-snap_daily"
 
 # This property must be present with the correct value on a dataset for it to be backed up.
+# To stop backing up a dataset, simply remove this property.
 # Valid values are "path", "nested", and "root"
 # path   - Creates a path of datasets on the destination that matches the source.
 #          The pool name is stripped from the path.
