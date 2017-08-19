@@ -539,26 +539,75 @@ test_invalid_argument () {
     check_result $SUCCESS $?
 }
 
-test_config_invalid () {
+test_remote_mode_invalid () {
     log "=================================================="
-    log "Test config invalid"
+    log "Test remote mode invalid"
     log "=================================================="
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-mode lol
+    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "furneaux:autobackup" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode lol
     check_result $CONFIG_INVALID $?
-    ./zfs-backup-manager.sh --remote-host "" --snapshot-pattern ""
+}
+
+test_snapshot_pattern_missing () {
+    log "=================================================="
+    log "Test snapshot pattern missing"
+    log "=================================================="
+
+    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "furneaux:autobackup" --snapshot-pattern "" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $CONFIG_INVALID $?
-    ./zfs-backup-manager.sh --remote-host "" --mode-property ""
+}
+
+test_mode_property_missing () {
+    log "=================================================="
+    log "Test mode property missing"
+    log "=================================================="
+
+    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $CONFIG_INVALID $?
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool ""
+}
+
+test_mbuffer_block_size_missing () {
+    log "=================================================="
+    log "Test mbuffer block size missing"
+    log "=================================================="
+
+    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "furneaux:autobackup" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $CONFIG_INVALID $?
-    ./zfs-backup-manager.sh --remote-host "" --mbuffer-block-size ""
+}
+
+test_mbuffer_port_missing () {
+    log "=================================================="
+    log "Test mbuffer port missing"
+    log "=================================================="
+
+    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "furneaux:autobackup" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port "" --remote-mode ssh
     check_result $CONFIG_INVALID $?
-    ./zfs-backup-manager.sh --remote-host "" --mbuffer-port ""
+}
+
+test_mbuffer_buffer_size_missing () {
+    log "=================================================="
+    log "Test mbuffer buffer size missing"
+    log "=================================================="
+
+    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "furneaux:autobackup" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "" --mbuffer-port 9090 --remote-mode ssh
     check_result $CONFIG_INVALID $?
-    ./zfs-backup-manager.sh --remote-host "" --mbuffer-buffer-size ""
+}
+
+test_remote_user_missing () {
+    log "=================================================="
+    log "Test remote user missing"
+    log "=================================================="
+
+    ./zfs-backup-manager.sh --remote-host "localhost" --remote-pool "$DEST_POOL" --mode-property "furneaux:autobackup" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh --remote-user ""
     check_result $CONFIG_INVALID $?
-    ./zfs-backup-manager.sh --remote-host "localhost" --remote-user ""
+}
+
+test_all_config_missing () {
+    log "=================================================="
+    log "Test all config missing"
+    log "=================================================="
+
+    ./zfs-backup-manager.sh --remote-host "localhost" --remote-pool "" --mode-property "" --snapshot-pattern "" --mbuffer-block-size "" --mbuffer-buffer-size "" --mbuffer-port "" --remote-mode lol --remote-user ""
     check_result $CONFIG_INVALID $?
 }
 
@@ -597,7 +646,14 @@ log ""
 # negative tests
 test_lockfile
 test_invalid_argument
-test_config_invalid
+test_remote_mode_invalid
+test_snapshot_pattern_missing
+test_mode_property_missing
+test_mbuffer_block_size_missing
+test_mbuffer_port_missing
+test_mbuffer_buffer_size_missing
+test_remote_user_missing
+test_all_config_missing
 test_invalid_mode
 test_missing_property
 test_missing_nest_name_property

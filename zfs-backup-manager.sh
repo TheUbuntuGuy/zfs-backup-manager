@@ -8,8 +8,7 @@
 
 # The naming pattern to look for when finding snapshots to backup.
 # The pattern does not need to be sortable, as snapshot creation time is used for ordering.
-#SNAPSHOT_PATTERN="zfs-auto-snap_daily"
-SNAPSHOT_PATTERN=""
+SNAPSHOT_PATTERN="zfs-auto-snap_daily"
 
 # This property must be present with the correct value on a dataset for it to be backed up.
 # Valid values are "path", "nested", and "root"
@@ -28,52 +27,42 @@ SNAPSHOT_PATTERN=""
 #          This option can only be set on top level pool datasets.
 #          e.g. With the nested name set to "system1" and "rootpool" having the "root" mode:
 #          /rootpool/a/b/c backs up to /backuppool/system1/rootpool/a/b/c
-#MODE_PROPERTY="furneaux:autobackup"
-MODE_PROPERTY=""
+MODE_PROPERTY="furneaux:autobackup"
 
 # The property which contains the name to nest the dataset under on the destination pool.
 # Only needs to be set if one or more datasets have the "nested" or "root" modes.
-#NEST_NAME_PROPERTY="furneaux:backupnestname"
-NEST_NAME_PROPERTY=""
+NEST_NAME_PROPERTY="furneaux:backupnestname"
 
 # Pool on the destination for backups to be received into.
-#REMOTE_POOL="btank"
-REMOTE_POOL=""
+REMOTE_POOL="btank"
 
 # Backup machine hostname. Set to "" for backups on the same machine.
-#REMOTE_HOST="darwin"
-REMOTE_HOST=""
+REMOTE_HOST="darwin"
 
 # User on the remote destination machine. Need not be set unless REMOTE_HOST is set.
 # There must be an SSH key already installed for passwordless authentication into this account.
 # This user must also have the rights to run ZFS commands via sudo without password authentication.
 # If using root, sudo is not used.
-#REMOTE_USER="root"
-REMOTE_USER=""
+REMOTE_USER="root"
 
 # How to transfer data over the network. Set to either "ssh" or "mbuffer".
 # mbuffer uses raw TCP with buffers on either side and is therefore much faster.
 # However mbuffer is not encrypted and as such should only be used on local networks.
 # mbuffer still requires SSH for remote system login.
-#REMOTE_MODE="mbuffer"
-REMOTE_MODE=""
+REMOTE_MODE="mbuffer"
 
 # The size of the blocks of data sent by mbuffer. It is usually best to set this the same as the
 # ZFS recordsize. Use "auto" to set this automatically to the recordsize per dataset.
 MBUFFER_BLOCK_SIZE="auto"
-#MBUFFER_BLOCK_SIZE=""
 
 # Port for mbuffer to bind to when receiving data.
-#MBUFFER_PORT="9090"
-MBUFFER_PORT=""
+MBUFFER_PORT="9090"
 
 # Size of mbuffer's memory buffer on the sending and receiving side.
-#MBUFFER_BUFF_SIZE="1G"
-MBUFFER_BUFF_SIZE=""
+MBUFFER_BUFF_SIZE="1G"
 
 # Options for the ssh session used during send/receive.
-#SSH_OPTIONS="-o Ciphers=arcfour"
-SSH_OPTIONS=""
+SSH_OPTIONS="-o Ciphers=arcfour"
 
 # ===== End of Config Options =====
 
@@ -135,34 +124,41 @@ print_help () {
 sanitize_config () {
     IS_INVALID=0
     if [ "$SNAPSHOT_PATTERN" == "" ]; then
+        log "Error: Missing snapshot pattern."
         IS_INVALID=1
     fi
     if [ "$MODE_PROPERTY" == "" ]; then
+        log "Error: Missing mode property."
         IS_INVALID=1
     fi
     if [ "$REMOTE_POOL" == "" ]; then
+        log "Error: Missing remote pool."
         IS_INVALID=1
     fi
     if [ "$MBUFFER_BLOCK_SIZE" == "" ]; then
+        log "Error: Missing mbuffer block size."
         IS_INVALID=1
     fi
     if [ "$MBUFFER_PORT" == "" ]; then
+        log "Error: Missing mbuffer port."
         IS_INVALID=1
     fi
     if [ "$MBUFFER_BUFF_SIZE" == "" ]; then
+        log "Error: Missing mbuffer buffer size."
         IS_INVALID=1
     fi
     if [ "$REMOTE_MODE" != "ssh" ] && [ "$REMOTE_MODE" != "mbuffer" ]; then
+        log "Error: Invalid remote mode."
         IS_INVALID=1
     fi
     if [ "$REMOTE_HOST" != "" ]; then
         if [ "$REMOTE_USER" == "" ]; then
+            log "Error: Missing remote user."
             IS_INVALID=1
         fi
     fi
 
     if [ "$IS_INVALID" -eq 1 ]; then
-        log "Error: A configuration property is missing."
         log "Cannot run without full configuration. Aborting."
         exit $CONFIG_INVALID
     fi
@@ -496,7 +492,7 @@ done
 
 LIST_DATASETS_TO_BACKUP_CMD="$ZFS_CMD get -s local -H -o name,value $MODE_PROPERTY"
 
-log "ZFS Backup Manager Starting..."
+log "ZFS Backup Manager v0.0.1 Starting..."
 
 sanitize_config
 
