@@ -22,6 +22,7 @@ See the script header for a detailed explanation of each option with examples.
   --snapshot-pattern        The pattern to search for in snapshot names to backup.
   --mode-property           The ZFS property which contains the backup mode.
   --nest-name-property      The ZFS property which contains the dataset name to nest within.
+  --zfs-options-property    The ZFS property which contains additional ZFS receive options.
   --remote-pool             The destination pool name.
   --remote-host             The hostname of the destination. Pass "" for the local machine.
   --remote-user             The user to login as on the destination.
@@ -78,7 +79,7 @@ received 312B stream in 1 seconds (312B/sec)
 ```
 
 ## Testing
-This script comes with a system test script `test_zfs_backup_manager.sh`. This script runs 33 external tests using temporary file-backed local pools. It is encouraged that you run these tests before using the script to prove that your system is sane.  
+This script comes with a system test script `test_zfs_backup_manager.sh`. This script runs 34 external tests using temporary file-backed local pools. It is encouraged that you run these tests before using the script to prove that your system is sane.  
 Similarly if you modify the script, run the tests to verify that you have not caused any regressions.  
 The test script does not have 100% coverage, nor is it fully automated. You must check the output to validate more than just the return codes.
 

@@ -126,6 +126,9 @@ general_test_teardown () {
 create_snapshots () {
     log "Generating New Snapshots..."
 
+    # generate some incompressible data to send
+    dd if=/dev/urandom of=/$SOURCE_POOL/testfile bs=1M count=30
+
     zfs snapshot -r $SOURCE_POOL@zfs-auto-snap_daily3
     zfs snapshot -r $SOURCE_POOL_2@zfs-auto-snap_daily3
     sleep 1
@@ -152,6 +155,24 @@ test_local () {
     path_setup
 
     ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "furneaux:autobackup" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    check_result $SUCCESS $?
+
+    general_test_teardown
+}
+
+test_additional_options () {
+    log "=================================================="
+    log "Test additional_options..."
+    log "=================================================="
+
+    general_test_setup
+
+    zfs set furneaux:backupopts="-o com.sun:auto-snapshot=false" $SOURCE_POOL/a
+
+    create_snapshots
+    path_setup
+
+    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "furneaux:autobackup" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh --zfs-options-property "furneaux:backupopts"
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -669,6 +690,7 @@ test_time_sanity_remote
 # positive tests
 test_simulation
 test_ignore_lockfile
+test_additional_options
 test_nested
 test_local
 test_ssh

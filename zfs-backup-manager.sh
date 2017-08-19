@@ -34,6 +34,11 @@ MODE_PROPERTY="furneaux:autobackup"
 # Only needs to be set if one or more datasets have the "nested" or "root" modes.
 NEST_NAME_PROPERTY="furneaux:backupnestname"
 
+# The property which contains additional dataset property overrides to pass to ZFS receive on the destination.
+# e.g. To set the property "com.sun:auto-snapshot" to "false" on the destination, set this
+# property value to "-o com.sun:auto-snapshot=false".
+ZFS_RECV_OPTIONS_PROPERTY="furneaux:backupopts"
+
 # Pool on the destination for backups to be received into.
 REMOTE_POOL="btank"
 
@@ -110,6 +115,7 @@ print_help () {
     echo "  --snapshot-pattern        The pattern to search for in snapshot names to backup."
     echo "  --mode-property           The ZFS property which contains the backup mode."
     echo "  --nest-name-property      The ZFS property which contains the dataset name to nest within."
+    echo "  --zfs-options-property    The ZFS property which contains additional ZFS receive options."
     echo "  --remote-pool             The destination pool name."
     echo "  --remote-host             The hostname of the destination. Pass \"\" for the local machine."
     echo "  --remote-user             The user to login as on the destination."
@@ -305,6 +311,14 @@ run_backup () {
         exit $TIME_SANITY_FAIL
     fi
 
+    if [ "$ZFS_RECV_OPTIONS_PROPERTY" != "" ]; then
+        ADDITIONAL_ZFS_OPTIONS=$($ZFS_CMD get -Hp -o value $ZFS_RECV_OPTIONS_PROPERTY $DATASET)
+        if [ "$ADDITIONAL_ZFS_OPTIONS" != "-" ]; then
+            log "Using additional ZFS options: $ADDITIONAL_ZFS_OPTIONS"
+            ZFS_OPTIONS="$ZFS_OPTIONS $ADDITIONAL_ZFS_OPTIONS"
+        fi
+    fi
+
     log "Performing send/receive..."
 
     if [ "$REMOTE_HOST" == "" ]; then
@@ -344,14 +358,14 @@ run_backup () {
             fi
             log "Using blocksize: $MBUFFER_REAL_BLOCK_SIZE"
 
-            REMOTE_RUN_CMD="$SSH_CMD $REMOTE_USER@$REMOTE_HOST $MBUFFER_CMD -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -I $MBUFFER_PORT | $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
+            REMOTE_RUN_CMD="$SSH_CMD $REMOTE_USER@$REMOTE_HOST $MBUFFER_CMD -q -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -I $MBUFFER_PORT | $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
             LOCAL_RUN_CMD_SEND="$ZFS_CMD send -R -I $REMOTE_SNAP $DATASET@$LOCAL_SNAP"
             LOCAL_RUN_CMD_MBUFFER="$MBUFFER_CMD -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -O $REMOTE_HOST:$MBUFFER_PORT"
             if [ $SIMULATE -eq 1 ]; then
                 log "Running in simulation. Not executing: $REMOTE_RUN_CMD"
                 log "Running in simulation. Not executing: $LOCAL_RUN_CMD_SEND | $LOCAL_RUN_CMD_MBUFFER"
             else
-                $REMOTE_RUN_CMD > $RECEIVE_LOG_FILE 2>&1 &
+                $REMOTE_RUN_CMD < /dev/null > $RECEIVE_LOG_FILE 2>&1 &
                 SUBPID=$!
                 sleep 3
                 $LOCAL_RUN_CMD_SEND | $LOCAL_RUN_CMD_MBUFFER
@@ -455,6 +469,10 @@ case $key in
     ;;
     --nest-name-property)
         NEST_NAME_PROPERTY="$2"
+        shift
+    ;;
+    --zfs-options-property)
+        ZFS_RECV_OPTIONS_PROPERTY="$2"
         shift
     ;;
     --remote-pool)
