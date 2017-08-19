@@ -76,7 +76,7 @@ received 312B stream in 1 seconds (312B/sec)
 ```
 
 ## Testing
-This script comes with a system test script `test_zfs_backup_manager.sh`. This script runs 34 external tests using temporary file-backed local pools. It is encouraged that you run these tests before using the script to prove that your system is sane.  
+This script comes with a system test script `test_zfs_backup_manager.sh`. This script runs 35 external tests using temporary file-backed local pools. It is encouraged that you run these tests before using the script to prove that your system is sane.  
 Similarly if you modify the script, run the tests to verify that you have not caused any regressions.  
 The test script does not have 100% coverage, nor is it fully automated. You must check the output to validate more than just the return codes.
 

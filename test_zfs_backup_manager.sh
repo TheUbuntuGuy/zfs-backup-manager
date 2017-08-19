@@ -508,6 +508,23 @@ test_mbuffer () {
     general_test_teardown
 }
 
+test_backup_disabled () {
+    log "=================================================="
+    log "Test backup disabled..."
+    log "=================================================="
+
+    general_test_setup
+    create_snapshots
+    path_setup
+
+    zfs set furneaux:autobackup=off $SOURCE_POOL/a
+
+    ./zfs-backup-manager.sh --remote-host "localhost" --remote-mode mbuffer --remote-pool "$DEST_POOL" --mode-property "furneaux:autobackup" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090
+    check_result $SUCCESS $?
+
+    general_test_teardown
+}
+
 test_mbuffer_auto_blocksize () {
     log "=================================================="
     log "Test auto mbuffer blocksize..."
@@ -694,6 +711,7 @@ test_time_sanity_remote
 test_simulation
 test_ignore_lockfile
 test_additional_options
+test_backup_disabled
 test_nested
 test_local
 test_ssh

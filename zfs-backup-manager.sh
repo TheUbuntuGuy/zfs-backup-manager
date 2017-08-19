@@ -11,7 +11,7 @@
 SNAPSHOT_PATTERN="zfs-auto-snap_daily"
 
 # This property must be present with the correct value on a dataset for it to be backed up.
-# To stop backing up a dataset, simply remove this property.
+# To stop backing up a dataset, simply remove this property or set to "off".
 # Valid values are "path", "nested", and "root"
 # path   - Creates a path of datasets on the destination that matches the source.
 #          The pool name is stripped from the path.
@@ -28,6 +28,7 @@ SNAPSHOT_PATTERN="zfs-auto-snap_daily"
 #          This option can only be set on top level pool datasets.
 #          e.g. With the nested name set to "system1" and "rootpool" having the "root" mode:
 #          /rootpool/a/b/c backs up to /backuppool/system1/rootpool/a/b/c
+# off    - The dataset will not be backed up.
 MODE_PROPERTY="furneaux:autobackup"
 
 # The property which contains the name to nest the dataset under on the destination pool.
@@ -435,6 +436,10 @@ process_datasets () {
                 log "Aborting."
                 exit $ROOT_INVALID
             fi
+            ;;
+        off)
+            log ""
+            log "Dataset \"$DATASET\" has backup disabled."
             ;;
         *)
             log "Error: Dataset \"$DATASET\" has an invalid mode \"$MODE\" set."
