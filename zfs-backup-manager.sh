@@ -80,7 +80,6 @@ SSH_CMD="/usr/bin/ssh"
 MBUFFER_CMD="/usr/bin/mbuffer"
 REMOTE_ZFS_CMD="$ZFS_CMD"
 NEST_NAME=""
-RECEIVE_LOG_FILE="/tmp/zfs-backup-manager-sr.log"
 
 # Error codes this script returns
 SUCCESS=0
@@ -360,20 +359,17 @@ run_backup () {
 
             REMOTE_RUN_CMD="$SSH_CMD $REMOTE_USER@$REMOTE_HOST $MBUFFER_CMD -q -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -I $MBUFFER_PORT | $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
             LOCAL_RUN_CMD_SEND="$ZFS_CMD send -R -I $REMOTE_SNAP $DATASET@$LOCAL_SNAP"
-            LOCAL_RUN_CMD_MBUFFER="$MBUFFER_CMD -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -O $REMOTE_HOST:$MBUFFER_PORT"
+            LOCAL_RUN_CMD_MBUFFER="$MBUFFER_CMD -q -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -O $REMOTE_HOST:$MBUFFER_PORT"
             if [ $SIMULATE -eq 1 ]; then
                 log "Running in simulation. Not executing: $REMOTE_RUN_CMD"
                 log "Running in simulation. Not executing: $LOCAL_RUN_CMD_SEND | $LOCAL_RUN_CMD_MBUFFER"
             else
-                $REMOTE_RUN_CMD < /dev/null > $RECEIVE_LOG_FILE 2>&1 &
+                $REMOTE_RUN_CMD < /dev/null 2>&1 &
                 SUBPID=$!
                 sleep 3
                 $LOCAL_RUN_CMD_SEND | $LOCAL_RUN_CMD_MBUFFER
                 STATUS=$?
-                log ""
-                log "Receive Log:"
                 wait $SUBPID
-                cat $RECEIVE_LOG_FILE
                 if [ $STATUS -ne 0 ]; then
                     log "Error: Backing up \"$DATASET@$LOCAL_SNAP\" failed."
                     log "Aborting."
@@ -404,13 +400,17 @@ check_nest_name () {
     fi
 }
 
-remove_tmp_files () {
-    if [ -e $RECEIVE_LOG_FILE ]; then
-        rm $RECEIVE_LOG_FILE
-    fi
-}
-
 process_datasets () {
+    if [ "$REMOTE_HOST" == "" ]; then
+        log "Using local pipe for transfer"
+    else
+        if [ $REMOTE_MODE == "ssh" ]; then
+            log "Using SSH for transfer"
+        elif [ $REMOTE_MODE == "mbuffer" ]; then
+            log "Using mbuffer for transfer"
+        fi
+    fi
+
     while read DATASET MODE
     do
         case $MODE in
@@ -530,8 +530,6 @@ check_for_datasets
 process_datasets
 
 release_lock
-
-remove_tmp_files
 
 log ""
 log "Backup process completed successfully. Exiting."

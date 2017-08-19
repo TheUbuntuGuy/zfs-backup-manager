@@ -127,7 +127,7 @@ create_snapshots () {
     log "Generating New Snapshots..."
 
     # generate some incompressible data to send
-    dd if=/dev/urandom of=/$SOURCE_POOL/testfile bs=1M count=30
+    dd if=/dev/urandom of=/$SOURCE_POOL/testfile bs=1M count=30 > /dev/random 2>&1
 
     zfs snapshot -r $SOURCE_POOL@zfs-auto-snap_daily3
     zfs snapshot -r $SOURCE_POOL_2@zfs-auto-snap_daily3
@@ -162,7 +162,7 @@ test_local () {
 
 test_additional_options () {
     log "=================================================="
-    log "Test additional_options..."
+    log "Test additional options..."
     log "=================================================="
 
     general_test_setup
@@ -514,6 +514,9 @@ test_mbuffer_auto_blocksize () {
     log "=================================================="
 
     general_test_setup
+
+    zfs set recordsize=1M $SOURCE_POOL/a
+
     create_snapshots
     path_setup
 

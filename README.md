@@ -39,6 +39,7 @@ This script must be run as root.
 This is an example of backing up a single dataset using `mbuffer` for transport, and the `root` mode.
 ```
 [ZFS Backup Manager] ZFS Backup Manager v0.0.1 Starting...
+[ZFS Backup Manager] Using mbuffer for transfer
 [ZFS Backup Manager]
 [ZFS Backup Manager] Processing dataset: testsource_138975
 [ZFS Backup Manager] Using mode: root
@@ -47,10 +48,6 @@ This is an example of backing up a single dataset using `mbuffer` for transport,
 [ZFS Backup Manager] Remote HEAD is: zfs-auto-snap_daily1
 [ZFS Backup Manager] Performing send/receive...
 [ZFS Backup Manager] Using blocksize: 128k
-in @  0.0 KiB/s, out @ 1790 KiB/s, 29.2 MiB total, buffer   0% full
-summary: 30.1 MiByte in 26.6sec - average of 1157 KiB/s
-[ZFS Backup Manager] 
-[ZFS Backup Manager] Receive Log:
 receiving incremental stream of testsource_138975@zfs-auto-snap_daily3 into testdest_138975/n/testsource_138975@zfs-auto-snap_daily3
 received 30.1M stream in 30 seconds (1.00M/sec)
 receiving incremental stream of testsource_138975@zfs-auto-snap_daily4 into testdest_138975/n/testsource_138975@zfs-auto-snap_daily4
@@ -62,6 +59,7 @@ received 312B stream in 1 seconds (312B/sec)
 Another run with a single dataset using `ssh` transport and the `nested` mode.
 ```
 [ZFS Backup Manager] ZFS Backup Manager v0.0.1 Starting...
+[ZFS Backup Manager] Using SSH for transfer
 [ZFS Backup Manager] 
 [ZFS Backup Manager] Processing dataset: testsource2_138975/b
 [ZFS Backup Manager] Using mode: nested
