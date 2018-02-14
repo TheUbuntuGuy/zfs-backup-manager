@@ -38,7 +38,7 @@ This script must be run as root.
 ## Sample Output
 This is an example of backing up a single dataset using `mbuffer` for transport, and the `root` mode.
 ```
-[ZFS Backup Manager] ZFS Backup Manager v0.0.1 Starting...
+[ZFS Backup Manager] ZFS Backup Manager v0.0.2 Starting...
 [ZFS Backup Manager] Using mbuffer for transfer
 [ZFS Backup Manager]
 [ZFS Backup Manager] Processing dataset: testsource_138975
@@ -58,7 +58,7 @@ received 312B stream in 1 seconds (312B/sec)
 
 Another run with a single dataset using `ssh` transport and the `nested` mode.
 ```
-[ZFS Backup Manager] ZFS Backup Manager v0.0.1 Starting...
+[ZFS Backup Manager] ZFS Backup Manager v0.0.2 Starting...
 [ZFS Backup Manager] Using SSH for transfer
 [ZFS Backup Manager] 
 [ZFS Backup Manager] Processing dataset: testsource2_138975/b
@@ -76,7 +76,7 @@ received 312B stream in 1 seconds (312B/sec)
 ```
 
 ## Testing
-This script comes with a system test script `test_zfs_backup_manager.sh`. This script runs 35 external tests using temporary file-backed local pools. It is encouraged that you run these tests before using the script to prove that your system is sane.  
+This script comes with a system test script `test_zfs_backup_manager.sh`. This script runs 37 external tests using temporary file-backed local pools. It is encouraged that you run these tests before using the script to prove that your system is sane.  
 Similarly if you modify the script, run the tests to verify that you have not caused any regressions.  
 The test script does not have 100% coverage, nor is it fully automated. You must check the output to validate more than just the return codes.
 
