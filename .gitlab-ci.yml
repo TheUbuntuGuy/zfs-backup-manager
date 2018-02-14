@@ -4,7 +4,7 @@ stages:
 
 shellcheck:
   stage: lint
-  image: koalaman/shellcheck:latest
+  image: koalaman/shellcheck-alpine:latest
   script:
     - shellcheck -s bash *.sh
   tags:
