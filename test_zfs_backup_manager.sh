@@ -432,10 +432,10 @@ test_root_on_non_top_level () {
 
     zfs set $ZFS_MODE_PROPERTY=root $SOURCE_POOL/a
     zfs set furneaux:backupnestname=n $SOURCE_POOL/a
-    zfs send -R $SOURCE_POOL/a@zfs-auto-snap_daily1 | sudo zfs recv -dF $DEST_POOL
+    zfs send -R $SOURCE_POOL/a@zfs-auto-snap_daily1 | sudo zfs recv -F $DEST_POOL/n/a
 
     ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --nest-name-property "furneaux:backupnestname" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
-    check_result $ROOT_INVALID $?
+    check_result $SUCCESS $?
 
     general_test_teardown
 }
@@ -728,7 +728,6 @@ test_config_file_missing
 test_invalid_mode
 test_missing_property
 test_missing_nest_name_property
-test_root_on_non_top_level
 test_path_on_top_level
 test_no_nest_name
 test_no_pattern_match
@@ -749,6 +748,7 @@ test_ssh
 test_mbuffer
 test_mbuffer_auto_blocksize
 test_root
+test_root_on_non_top_level
 test_chain_backup_local
 test_chain_backup_ssh
 test_chain_backup_mbuffer

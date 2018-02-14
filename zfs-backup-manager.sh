@@ -360,13 +360,7 @@ process_datasets () {
             ;;
         root)
             check_nest_name
-            if [ "$DATASET" == "$(basename "$DATASET")" ]; then
-                run_backup "$DATASET" "$MODE"
-            else
-                log "Error: Dataset \"$DATASET\" is set to mode \"$MODE\" but is not a root dataset."
-                log "Aborting."
-                exit $ROOT_INVALID
-            fi
+            run_backup "$DATASET" "$MODE"
             ;;
         off)
             log ""
@@ -476,7 +470,7 @@ parse_config_file_arg "$@"
 log "Loading configuration..."
 #shellcheck disable=SC1090
 source "$CONFIG_FILE" > /dev/random 2>&1 || {
-    log "Error: The configuration file '$CONFIG_FILE' could not be loaded. Exiting"
+    log "Error: The configuration file '$CONFIG_FILE' could not be loaded. Exiting."
     exit $CONFIG_INVALID
 }
 

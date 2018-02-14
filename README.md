@@ -6,7 +6,7 @@ Dataset-specific options are stored as custom properties within the dataset, and
 
 It can be automated to run with a server which is normally off using [offline-zfs-backup](https://github.com/TheUbuntuGuy/offline-zfs-backup).
 
-All configuration options and their explanations can be found in the config header of `zfs-backup-manager.sh`. All options can be overridden from the command line as well.
+All configuration options and their explanations can be found in the config file `zfs-backup-manager.conf`. All options can be overridden from the command line as well.
 
 ## Quick Usage Reference
 ```
@@ -16,9 +16,11 @@ Usage: zfs-backup-manager.sh [--simulate] [--ignore-lock]
   --ignore-lock             Ignore the presence of a lock file and run regardless.
                             This option is dangerous and should only be used to
                             clear a previous failure.
+  --config FILE             Load a custom configuration file.
+                            If not set, defaults to '/etc/zfs-backup-manager.sh'.
 
-The following options override those set in the script.
-See the script header for a detailed explanation of each option with examples.
+The following options override those set in the configuration file.
+See the configuration file for a detailed explanation of each option with examples.
   --snapshot-pattern        The pattern to search for in snapshot names to backup.
   --mode-property           The ZFS property which contains the backup mode.
   --nest-name-property      The ZFS property which contains the dataset name to nest within.
@@ -81,4 +83,4 @@ Similarly if you modify the script, run the tests to verify that you have not ca
 The test script does not have 100% coverage, nor is it fully automated. You must check the output to validate more than just the return codes.
 
 ## Dependencies
-You will need `openssh-client`, `mbuffer`, and of course `zfs` installed to use all features.
+You will need `openssh-client`, `mbuffer`, `zfs-auto-snapshot`, and of course `zfs` installed to use all features. The Debian package links to the related packages.
