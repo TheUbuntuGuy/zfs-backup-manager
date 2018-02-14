@@ -112,7 +112,7 @@ check_root () {
 }
 
 get_lock () {
-    if [ -e $LOCK_FILE ] && [ $IGNORE_LOCK -eq 0 ]; then
+    if [ -e "$LOCK_FILE" ] && [ "$IGNORE_LOCK" -eq 0 ]; then
         log "Error: Lock file is present!"
         log "This either means that another instance of this script is running,"
         log "or that a previous run crashed. If you are sure that there is no other backup"
