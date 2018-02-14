@@ -81,4 +81,4 @@ Similarly if you modify the script, run the tests to verify that you have not ca
 The test script does not have 100% coverage, nor is it fully automated. You must check the output to validate more than just the return codes.
 
 ## Dependencies
-You will need `openssh-server`, `mbuffer`, and of course `zfs` installed to use all features.
+You will need `openssh-client`, `mbuffer`, and of course `zfs` installed to use all features.
