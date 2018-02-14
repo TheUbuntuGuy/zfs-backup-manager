@@ -4,9 +4,7 @@ stages:
 
 shellcheck:
   stage: lint
-  services:
-    - name: koalaman/shellcheck:latest
-      alias: shellcheck
+  image: koalaman/shellcheck:latest
   script:
     - shellcheck -s bash *.sh
   tags:
@@ -14,9 +12,7 @@ shellcheck:
 
 deb_package:
   stage: package
-  services:
-    - name: debian:latest
-      alias: debian
+  image: debian:latest
   script:
     - make
   artifacts:
