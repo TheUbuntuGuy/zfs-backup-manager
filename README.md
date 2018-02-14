@@ -41,6 +41,7 @@ This script must be run as root.
 This is an example of backing up a single dataset using `mbuffer` for transport, and the `root` mode.
 ```
 [ZFS Backup Manager] ZFS Backup Manager v0.0.2 Starting...
+[ZFS Backup Manager] Loading configuration...
 [ZFS Backup Manager] Using mbuffer for transfer
 [ZFS Backup Manager]
 [ZFS Backup Manager] Processing dataset: testsource_138975
@@ -61,6 +62,7 @@ received 312B stream in 1 seconds (312B/sec)
 Another run with a single dataset using `ssh` transport and the `nested` mode.
 ```
 [ZFS Backup Manager] ZFS Backup Manager v0.0.2 Starting...
+[ZFS Backup Manager] Loading configuration...
 [ZFS Backup Manager] Using SSH for transfer
 [ZFS Backup Manager] 
 [ZFS Backup Manager] Processing dataset: testsource2_138975/b
