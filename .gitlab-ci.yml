@@ -1,0 +1,27 @@
+stages:
+  - lint
+  - package
+
+shellcheck:
+  stage: lint
+  services:
+    - name: koalaman/shellcheck:latest
+      alias: shellcheck
+  script:
+    - shellcheck -s bash *.sh
+  tags:
+    - docker
+
+deb_package:
+  stage: package
+  services:
+    - name: debian:latest
+      alias: debian
+  script:
+    - make
+  artifacts:
+    paths:
+    - bin/*.deb
+    expire_in: 6 months
+  tags:
+    - docker
