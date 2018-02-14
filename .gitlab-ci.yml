@@ -12,7 +12,7 @@ shellcheck:
 
 deb_package:
   stage: package
-  image: debian:latest
+  image: eugenmayer/make
   script:
     - make
   artifacts:
