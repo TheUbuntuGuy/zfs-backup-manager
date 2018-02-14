@@ -1,4 +1,5 @@
 #!/bin/bash
+#shellcheck disable=SC2181
 
 # ZFS Backup Manager
 # Version 0.0.2
@@ -121,7 +122,7 @@ get_lock () {
         log "Warning: Ignoring lock file"
     fi
 
-    echo $$ > $LOCK_FILE
+    echo $$ > "$LOCK_FILE"
 
     if [ $? -ne 0 ]; then
         log "Error: Lock file could not be written."
@@ -131,7 +132,7 @@ get_lock () {
 }
 
 release_lock () {
-    rm $LOCK_FILE
+    rm "$LOCK_FILE"
 }
 
 check_for_datasets () {
@@ -198,7 +199,7 @@ run_backup () {
             exit $COMM_ERROR
         fi
     else
-        REMOTE_HEAD="$($SSH_CMD -n $REMOTE_USER@$REMOTE_HOST "$REMOTE_ZFS_CMD" list -t snapshot -H -S creation -o name -d 1 "$DESTINATION_DATASET" | grep "$SNAPSHOT_PATTERN" | head -1)"
+        REMOTE_HEAD="$($SSH_CMD -n "$REMOTE_USER@$REMOTE_HOST" "$REMOTE_ZFS_CMD" list -t snapshot -H -S creation -o name -d 1 "$DESTINATION_DATASET" | grep "$SNAPSHOT_PATTERN" | head -1)"
         if [ $? -ne 0 ]; then
             log "Error: Could not fetch remote snapshot list on destination pool."
             log "Aborting."
@@ -231,7 +232,7 @@ run_backup () {
     if [ "$REMOTE_HOST" == "" ]; then
         REMOTE_SNAP_TIME=$($ZFS_CMD get -Hp -o value creation "$DESTINATION_DATASET@$REMOTE_SNAP")
     else
-        REMOTE_SNAP_TIME=$($SSH_CMD -n $REMOTE_USER@$REMOTE_HOST "$REMOTE_ZFS_CMD" get -Hp -o value creation "$DESTINATION_DATASET@$REMOTE_SNAP")
+        REMOTE_SNAP_TIME=$($SSH_CMD -n "$REMOTE_USER@$REMOTE_HOST" "$REMOTE_ZFS_CMD" get -Hp -o value creation "$DESTINATION_DATASET@$REMOTE_SNAP")
     fi
     if [ "$LOCAL_SNAP_TIME" -lt "$REMOTE_SNAP_TIME" ]; then
         log "Error: Local snapshot \"$LOCAL_SNAP\" is older than \"$REMOTE_SNAP\"."
@@ -240,6 +241,7 @@ run_backup () {
     fi
 
     if [ "$ZFS_RECV_OPTIONS_PROPERTY" != "" ]; then
+        #shellcheck disable=SC2086
         ADDITIONAL_ZFS_OPTIONS=$($ZFS_CMD get -Hp -o value $ZFS_RECV_OPTIONS_PROPERTY "$DATASET")
         if [ "$ADDITIONAL_ZFS_OPTIONS" != "-" ]; then
             log "Using additional ZFS options: $ADDITIONAL_ZFS_OPTIONS"
@@ -279,7 +281,7 @@ run_backup () {
                 fi
             fi
         elif [ "$REMOTE_MODE" == "mbuffer" ]; then
-            if [ $MBUFFER_BLOCK_SIZE == "auto" ]; then
+            if [ "$MBUFFER_BLOCK_SIZE" == "auto" ]; then
                 MBUFFER_REAL_BLOCK_SIZE="$($ZFS_CMD get -H -o value recordsize "$DATASET")"
             else
                 MBUFFER_REAL_BLOCK_SIZE="$MBUFFER_BLOCK_SIZE"
@@ -334,14 +336,14 @@ process_datasets () {
     if [ "$REMOTE_HOST" == "" ]; then
         log "Using local pipe for transfer"
     else
-        if [ $REMOTE_MODE == "ssh" ]; then
+        if [ "$REMOTE_MODE" == "ssh" ]; then
             log "Using SSH for transfer"
-        elif [ $REMOTE_MODE == "mbuffer" ]; then
+        elif [ "$REMOTE_MODE" == "mbuffer" ]; then
             log "Using mbuffer for transfer"
         fi
     fi
 
-    while read DATASET MODE
+    while read -r DATASET MODE
     do
         case $MODE in
         path)
@@ -472,6 +474,7 @@ log "ZFS Backup Manager v0.0.2 Starting..."
 parse_config_file_arg "$@"
 
 log "Loading configuration..."
+#shellcheck disable=SC1090
 source "$CONFIG_FILE" > /dev/random 2>&1 || {
     log "Error: The configuration file '$CONFIG_FILE' could not be loaded. Exiting"
     exit $CONFIG_INVALID

@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2034
 
 # ZFS Backup Manager Test Script
 # Version 0.0.2
@@ -6,8 +7,8 @@
 
 # An ssh key to the local root user is needed for the remote tests to pass.
 
-SCRIPT=$(realpath $0)
-SCRIPT_PATH=$(dirname $SCRIPT)
+SCRIPT=$(realpath "$0")
+SCRIPT_PATH=$(dirname "$SCRIPT")
 
 # Test config. Shouldn't conflict with any real systems...
 SOURCE_POOL_FILE="testsource.img"
@@ -54,7 +55,7 @@ check_result () {
     EXPECT=$1
     CODE=$2
 
-    if [ $EXPECT -eq $CODE ]; then
+    if [ "$EXPECT" -eq "$CODE" ]; then
         ((PASS_TESTS++)) || true
         log "~~~PASS~~~"
     else
@@ -72,13 +73,13 @@ check_result () {
 general_test_setup () {
     log "Test Setup..."
 
-    truncate -s 100M $SOURCE_POOL_FILE
-    truncate -s 100M $SOURCE2_POOL_FILE
-    truncate -s 100M $DEST_POOL_FILE
+    truncate -s 100M "$SOURCE_POOL_FILE"
+    truncate -s 100M "$SOURCE2_POOL_FILE"
+    truncate -s 100M "$DEST_POOL_FILE"
 
-    zpool create $SOURCE_POOL $SCRIPT_PATH/$SOURCE_POOL_FILE
-    zpool create $SOURCE_POOL_2 $SCRIPT_PATH/$SOURCE2_POOL_FILE
-    zpool create $DEST_POOL $SCRIPT_PATH/$DEST_POOL_FILE
+    zpool create $SOURCE_POOL "$SCRIPT_PATH/$SOURCE_POOL_FILE"
+    zpool create $SOURCE_POOL_2 "$SCRIPT_PATH/$SOURCE2_POOL_FILE"
+    zpool create $DEST_POOL "$SCRIPT_PATH/$DEST_POOL_FILE"
 
     zfs create $SOURCE_POOL/a
     zfs create $SOURCE_POOL_2/b
@@ -681,7 +682,7 @@ test_config_file_missing () {
 }
 
 print_help () {
-    echo "Usage: $(basename $0) [--fail-fast] [--cleanup]"
+    echo "Usage: $(basename "$0") [--fail-fast] [--cleanup]"
     echo "  --fail-fast         Stop testing on the first failure."
     echo "  --cleanup           Cleanup after a failed test run."
     exit 0
