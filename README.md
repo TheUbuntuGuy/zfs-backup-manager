@@ -10,7 +10,7 @@ All configuration options and their explanations can be found in the config file
 
 ## Quick Usage Reference
 ```
-Usage: zfs-backup-manager.sh [--simulate] [--ignore-lock]
+Usage: zfs-backup-manager.sh [--simulate] [--ignore-lock] [--config FILE]
   --simulate                Print the commands which would be run,
                             but don't actually execute them.
   --ignore-lock             Ignore the presence of a lock file and run regardless.
