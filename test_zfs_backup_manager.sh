@@ -1,13 +1,14 @@
 #!/bin/bash
+# shellcheck disable=SC2034
 
 # ZFS Backup Manager Test Script
-# Version 0.0.1
-# Copyright 2017 Romaco Canada, Mark Furneaux
+# Version 0.0.2
+# Copyright 2017-2018 Romaco Canada, Mark Furneaux
 
 # An ssh key to the local root user is needed for the remote tests to pass.
 
-SCRIPT=$(realpath $0)
-SCRIPT_PATH=$(dirname $SCRIPT)
+SCRIPT=$(realpath "$0")
+SCRIPT_PATH=$(dirname "$SCRIPT")
 
 # Test config. Shouldn't conflict with any real systems...
 SOURCE_POOL_FILE="testsource.img"
@@ -54,7 +55,7 @@ check_result () {
     EXPECT=$1
     CODE=$2
 
-    if [ $EXPECT -eq $CODE ]; then
+    if [ "$EXPECT" -eq "$CODE" ]; then
         ((PASS_TESTS++)) || true
         log "~~~PASS~~~"
     else
@@ -72,13 +73,13 @@ check_result () {
 general_test_setup () {
     log "Test Setup..."
 
-    truncate -s 100M $SOURCE_POOL_FILE
-    truncate -s 100M $SOURCE2_POOL_FILE
-    truncate -s 100M $DEST_POOL_FILE
+    truncate -s 100M "$SOURCE_POOL_FILE"
+    truncate -s 100M "$SOURCE2_POOL_FILE"
+    truncate -s 100M "$DEST_POOL_FILE"
 
-    zpool create $SOURCE_POOL $SCRIPT_PATH/$SOURCE_POOL_FILE
-    zpool create $SOURCE_POOL_2 $SCRIPT_PATH/$SOURCE2_POOL_FILE
-    zpool create $DEST_POOL $SCRIPT_PATH/$DEST_POOL_FILE
+    zpool create $SOURCE_POOL "$SCRIPT_PATH/$SOURCE_POOL_FILE"
+    zpool create $SOURCE_POOL_2 "$SCRIPT_PATH/$SOURCE2_POOL_FILE"
+    zpool create $DEST_POOL "$SCRIPT_PATH/$DEST_POOL_FILE"
 
     zfs create $SOURCE_POOL/a
     zfs create $SOURCE_POOL_2/b
@@ -156,7 +157,7 @@ test_local () {
     create_snapshots
     path_setup
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -174,7 +175,7 @@ test_additional_options () {
     create_snapshots
     path_setup
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh --zfs-options-property "furneaux:backupopts"
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh --zfs-options-property "furneaux:backupopts"
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -195,7 +196,7 @@ test_simulation () {
     sleep 1
     zfs snapshot $SOURCE_POOL/a@zfs-auto-snap_daily9
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --simulate --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --simulate --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -210,7 +211,7 @@ test_missing_nest_name_property () {
     create_snapshots
     nested_setup
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh --nest-name-property ""
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh --nest-name-property ""
     check_result $CONFIG_INVALID $?
 
     general_test_teardown
@@ -227,7 +228,7 @@ test_chain_backup_local () {
     nested_setup
     root_setup
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh --nest-name-property "furneaux:backupnestname"  --ssh-options ""
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh --nest-name-property "furneaux:backupnestname"  --ssh-options ""
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -244,7 +245,7 @@ test_chain_backup_ssh () {
     nested_setup
     root_setup
 
-    ./zfs-backup-manager.sh --remote-host "localhost" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --remote-mode ssh --remote-user "root" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --nest-name-property "furneaux:backupnestname"  --ssh-options ""
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "localhost" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --remote-mode ssh --remote-user "root" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --nest-name-property "furneaux:backupnestname"  --ssh-options ""
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -261,7 +262,7 @@ test_chain_backup_mbuffer () {
     nested_setup
     root_setup
 
-    ./zfs-backup-manager.sh --remote-host "localhost" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --remote-mode mbuffer --remote-user "root" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --nest-name-property "furneaux:backupnestname"
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "localhost" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --remote-mode mbuffer --remote-user "root" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --nest-name-property "furneaux:backupnestname"
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -276,7 +277,7 @@ test_no_pattern_match () {
     create_snapshots
     path_setup
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "no_match_pattern" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "no_match_pattern" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $NO_PATTERN_MATCH $?
 
     general_test_teardown
@@ -293,7 +294,7 @@ test_no_pattern_match_remote () {
 
     zfs destroy $DEST_POOL/a@zfs-auto-snap_daily1
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $NO_PATTERN_MATCH $?
 
     general_test_teardown
@@ -311,7 +312,7 @@ test_remote_ahead_of_local () {
     # create a snapshot on the destionation which does not exist on the source
     zfs snapshot $DEST_POOL/a@zfs-auto-snap_daily9
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $MISSING_SNAPSHOT $?
 
     general_test_teardown
@@ -330,7 +331,7 @@ test_time_sanity_local () {
     sleep 1
     zfs snapshot $DEST_POOL/a@zfs-auto-snap_daily6
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $TIME_SANITY_FAIL $?
 
     general_test_teardown
@@ -349,7 +350,7 @@ test_time_sanity_remote () {
     sleep 1
     zfs snapshot $DEST_POOL/a@zfs-auto-snap_daily6
 
-    ./zfs-backup-manager.sh --remote-host "localhost" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --remote-mode ssh --remote-user "root" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --ssh-options ""
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "localhost" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --remote-mode ssh --remote-user "root" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --ssh-options ""
     check_result $TIME_SANITY_FAIL $?
 
     general_test_teardown
@@ -366,7 +367,7 @@ test_invalid_mode () {
 
     zfs set $ZFS_MODE_PROPERTY=lol $SOURCE_POOL/a
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --remote-mode ssh --remote-user "root" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --remote-mode ssh --remote-user "root" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090
     check_result $MODE_INVALID $?
 
     general_test_teardown
@@ -381,8 +382,25 @@ test_nested () {
     create_snapshots
     nested_setup
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --nest-name-property "furneaux:backupnestname" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --nest-name-property "furneaux:backupnestname" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $SUCCESS $?
+
+    general_test_teardown
+}
+
+test_zfs_send_fail () {
+    log "=================================================="
+    log "Test ZFS send failure..."
+    log "=================================================="
+
+    general_test_setup
+    create_snapshots
+    root_setup
+
+    zfs destroy $SOURCE_POOL/a@zfs-auto-snap_daily7
+
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "localhost" --remote-mode ssh --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --ssh-options ""
+    check_result $SEND_RECV_FAIL $?
 
     general_test_teardown
 }
@@ -398,7 +416,7 @@ test_path_on_top_level () {
     zfs set $ZFS_MODE_PROPERTY=path $SOURCE_POOL
     zfs send -R $SOURCE_POOL@zfs-auto-snap_daily1 | sudo zfs recv -dF $DEST_POOL
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --nest-name-property "furneaux:backupnestname" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --nest-name-property "furneaux:backupnestname" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $ROOT_INVALID $?
 
     general_test_teardown
@@ -414,10 +432,10 @@ test_root_on_non_top_level () {
 
     zfs set $ZFS_MODE_PROPERTY=root $SOURCE_POOL/a
     zfs set furneaux:backupnestname=n $SOURCE_POOL/a
-    zfs send -R $SOURCE_POOL/a@zfs-auto-snap_daily1 | sudo zfs recv -dF $DEST_POOL
+    zfs send -R $SOURCE_POOL/a@zfs-auto-snap_daily1 | sudo zfs recv -F $DEST_POOL/n/a
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --nest-name-property "furneaux:backupnestname" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
-    check_result $ROOT_INVALID $?
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --nest-name-property "furneaux:backupnestname" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    check_result $SUCCESS $?
 
     general_test_teardown
 }
@@ -431,7 +449,7 @@ test_root () {
     create_snapshots
     root_setup
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --nest-name-property "furneaux:backupnestname" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --nest-name-property "furneaux:backupnestname" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -448,7 +466,7 @@ test_no_nest_name () {
     zfs set $ZFS_MODE_PROPERTY=root $SOURCE_POOL
     zfs send -R $SOURCE_POOL@zfs-auto-snap_daily1 | sudo zfs recv $DEST_POOL/n/$SOURCE_POOL
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --nest-name-property "furneaux:backupnestname" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --nest-name-property "furneaux:backupnestname" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $NEST_NAME_MISSING $?
 
     general_test_teardown
@@ -460,7 +478,7 @@ test_lockfile () {
     log "=================================================="
 
     echo $$ > $LOCK_FILE
-    ./zfs-backup-manager.sh --remote-host "" --remote-mode mbuffer --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-mode mbuffer --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090
     check_result $LOCK_FILE_PRESENT $?
     rm $LOCK_FILE
 }
@@ -474,7 +492,7 @@ test_ignore_lockfile () {
     path_setup
 
     echo $$ > $LOCK_FILE
-    ./zfs-backup-manager.sh --remote-host "" --ignore-lock --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --remote-user "root" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --ignore-lock --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --remote-user "root" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -489,7 +507,7 @@ test_ssh () {
     create_snapshots
     path_setup
 
-    ./zfs-backup-manager.sh --remote-host "localhost" --remote-mode ssh --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --ssh-options ""
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "localhost" --remote-mode ssh --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --ssh-options ""
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -504,7 +522,7 @@ test_mbuffer () {
     create_snapshots
     path_setup
 
-    ./zfs-backup-manager.sh --remote-host "localhost" --remote-mode mbuffer --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "localhost" --remote-mode mbuffer --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -521,7 +539,7 @@ test_backup_disabled () {
 
     zfs set $ZFS_MODE_PROPERTY=off $SOURCE_POOL/a
 
-    ./zfs-backup-manager.sh --remote-host "localhost" --remote-mode mbuffer --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "localhost" --remote-mode mbuffer --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -539,7 +557,7 @@ test_mbuffer_auto_blocksize () {
     create_snapshots
     path_setup
 
-    ./zfs-backup-manager.sh --remote-host "localhost" --remote-mode mbuffer --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "auto" --mbuffer-buffer-size "1G" --mbuffer-port 9090
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "localhost" --remote-mode mbuffer --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --remote-user "root" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "auto" --mbuffer-buffer-size "1G" --mbuffer-port 9090
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -553,7 +571,7 @@ test_up_to_date () {
     general_test_setup
     path_setup
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $SUCCESS $?
 
     general_test_teardown
@@ -567,7 +585,7 @@ test_missing_property () {
     general_test_setup
     path_setup
 
-    ./zfs-backup-manager.sh --remote-host "" --mode-property "lol:thisaintright" --remote-pool "$DEST_POOL" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --mode-property "lol:thisaintright" --remote-pool "$DEST_POOL" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $NO_DATASETS $?
 
     general_test_teardown
@@ -578,7 +596,7 @@ test_invalid_argument () {
     log "Test invalid argument..."
     log "=================================================="
 
-    ./zfs-backup-manager.sh --remote-host "" --lolnope
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --lolnope
     check_result $SUCCESS $?
 }
 
@@ -587,7 +605,7 @@ test_remote_mode_invalid () {
     log "Test remote mode invalid"
     log "=================================================="
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode lol
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode lol
     check_result $CONFIG_INVALID $?
 }
 
@@ -596,7 +614,7 @@ test_snapshot_pattern_missing () {
     log "Test snapshot pattern missing"
     log "=================================================="
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $CONFIG_INVALID $?
 }
 
@@ -605,7 +623,7 @@ test_mode_property_missing () {
     log "Test mode property missing"
     log "=================================================="
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $CONFIG_INVALID $?
 }
 
@@ -614,7 +632,7 @@ test_mbuffer_block_size_missing () {
     log "Test mbuffer block size missing"
     log "=================================================="
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh
     check_result $CONFIG_INVALID $?
 }
 
@@ -623,7 +641,7 @@ test_mbuffer_port_missing () {
     log "Test mbuffer port missing"
     log "=================================================="
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port "" --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port "" --remote-mode ssh
     check_result $CONFIG_INVALID $?
 }
 
@@ -632,7 +650,7 @@ test_mbuffer_buffer_size_missing () {
     log "Test mbuffer buffer size missing"
     log "=================================================="
 
-    ./zfs-backup-manager.sh --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "" --mbuffer-port 9090 --remote-mode ssh
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "" --mbuffer-port 9090 --remote-mode ssh
     check_result $CONFIG_INVALID $?
 }
 
@@ -641,7 +659,7 @@ test_remote_user_missing () {
     log "Test remote user missing"
     log "=================================================="
 
-    ./zfs-backup-manager.sh --remote-host "localhost" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh --remote-user ""
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "localhost" --remote-pool "$DEST_POOL" --mode-property "$ZFS_MODE_PROPERTY" --snapshot-pattern "zfs-auto-snap_daily" --mbuffer-block-size "128k" --mbuffer-buffer-size "1G" --mbuffer-port 9090 --remote-mode ssh --remote-user ""
     check_result $CONFIG_INVALID $?
 }
 
@@ -650,12 +668,21 @@ test_all_config_missing () {
     log "Test all config missing"
     log "=================================================="
 
-    ./zfs-backup-manager.sh --remote-host "localhost" --remote-pool "" --mode-property "" --snapshot-pattern "" --mbuffer-block-size "" --mbuffer-buffer-size "" --mbuffer-port "" --remote-mode lol --remote-user ""
+    ./zfs-backup-manager.sh --config "zfs-backup-manager.conf" --remote-host "localhost" --remote-pool "" --mode-property "" --snapshot-pattern "" --mbuffer-block-size "" --mbuffer-buffer-size "" --mbuffer-port "" --remote-mode lol --remote-user ""
+    check_result $CONFIG_INVALID $?
+}
+
+test_config_file_missing () {
+    log "=================================================="
+    log "Test config file missing"
+    log "=================================================="
+
+    ./zfs-backup-manager.sh --config "not-a-real-file.conf"
     check_result $CONFIG_INVALID $?
 }
 
 print_help () {
-    echo "Usage: $(basename $0) [--fail-fast] [--cleanup]"
+    echo "Usage: $(basename "$0") [--fail-fast] [--cleanup]"
     echo "  --fail-fast         Stop testing on the first failure."
     echo "  --cleanup           Cleanup after a failed test run."
     exit 0
@@ -697,10 +724,10 @@ test_mbuffer_port_missing
 test_mbuffer_buffer_size_missing
 test_remote_user_missing
 test_all_config_missing
+test_config_file_missing
 test_invalid_mode
 test_missing_property
 test_missing_nest_name_property
-test_root_on_non_top_level
 test_path_on_top_level
 test_no_nest_name
 test_no_pattern_match
@@ -708,6 +735,7 @@ test_no_pattern_match_remote
 test_remote_ahead_of_local
 test_time_sanity_local
 test_time_sanity_remote
+test_zfs_send_fail
 
 # positive tests
 test_simulation
@@ -720,6 +748,7 @@ test_ssh
 test_mbuffer
 test_mbuffer_auto_blocksize
 test_root
+test_root_on_non_top_level
 test_chain_backup_local
 test_chain_backup_ssh
 test_chain_backup_mbuffer

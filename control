@@ -1,0 +1,12 @@
+Package: zfs-backup-manager
+Version: 0.0.2
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: zfs, openssh-client
+Recommends: mbuffer
+Suggests: zfs-auto-snapshot
+Maintainer: Mark Furneaux <mark@furneaux.ca>
+Homepage: https://github.com/TheUbuntuGuy/zfs-backup-manager
+Description: Automatic ZFS Backup Management Tool
+Installed-Size:
