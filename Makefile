@@ -4,7 +4,7 @@ CONFIG_DIR=$(PACKAGE_DIR)/etc
 BIN_DIR=$(PACKAGE_DIR)/usr/local/bin
 DEBIAN_DIR=$(PACKAGE_DIR)/DEBIAN
 
-.PHONY: all clean package directories stage
+.PHONY: all clean package directories stage test install
 
 all: package
 
@@ -28,3 +28,9 @@ package: directories stage
 	sed -i "/Installed-Size/c\Installed-Size: ${SIZE}" $(DEBIAN_DIR)/control
 	dpkg --build $(PACKAGE_DIR)
 	rm -rf $(PACKAGE_DIR)
+
+test:
+	sudo ./test_zfs_backup_manager.sh
+
+install: package
+	sudo dpkg -i bin/zfs-backup-manager.deb
