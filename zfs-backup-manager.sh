@@ -2,8 +2,8 @@
 #shellcheck disable=SC2181
 
 # ZFS Backup Manager
-# Version 0.0.3
-# Copyright 2017-2021 Romaco Canada, Mark Furneaux
+# Version 0.0.4
+# Copyright 2017-2022 Romaco Canada, Mark Furneaux
 
 CONFIG_FILE="/etc/zfs-backup-manager.conf"
 SIMULATE=0
@@ -288,9 +288,9 @@ run_backup () {
             fi
             log "Using blocksize: $MBUFFER_REAL_BLOCK_SIZE"
 
-            REMOTE_RUN_CMD="$SSH_CMD $REMOTE_USER@$REMOTE_HOST $MBUFFER_CMD -q -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -I $MBUFFER_PORT | $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
+            REMOTE_RUN_CMD="$SSH_CMD $REMOTE_USER@$REMOTE_HOST $REMOTE_MBUFFER_CMD -4 -q -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -I $MBUFFER_PORT | $REMOTE_ZFS_CMD recv -v $ZFS_OPTIONS -F $DESTINATION"
             LOCAL_RUN_CMD_SEND="$ZFS_CMD send -R -I $REMOTE_SNAP $DATASET@$LOCAL_SNAP"
-            LOCAL_RUN_CMD_MBUFFER="$MBUFFER_CMD -q -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -O $REMOTE_HOST:$MBUFFER_PORT"
+            LOCAL_RUN_CMD_MBUFFER="$MBUFFER_CMD -4 -q -s $MBUFFER_REAL_BLOCK_SIZE -m $MBUFFER_BUFF_SIZE -O $REMOTE_HOST:$MBUFFER_PORT"
             if [ $SIMULATE -eq 1 ]; then
                 log "Running in simulation. Not executing: $REMOTE_RUN_CMD"
                 log "Running in simulation. Not executing: $LOCAL_RUN_CMD_SEND | $LOCAL_RUN_CMD_MBUFFER"
@@ -469,7 +469,7 @@ parse_config_file_arg() {
     done
 }
 
-log "ZFS Backup Manager v0.0.3 Starting..."
+log "ZFS Backup Manager v0.0.4 Starting..."
 
 # Need to parse config file argument first since command line options take precedence
 parse_config_file_arg "$@"
