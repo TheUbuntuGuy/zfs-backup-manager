@@ -2,8 +2,8 @@
 #shellcheck disable=SC2181
 
 # ZFS Backup Manager
-# Version 0.0.2
-# Copyright 2017-2018 Romaco Canada, Mark Furneaux
+# Version 0.0.3
+# Copyright 2017-2021 Romaco Canada, Mark Furneaux
 
 CONFIG_FILE="/etc/zfs-backup-manager.conf"
 SIMULATE=0
@@ -299,14 +299,21 @@ run_backup () {
                 SUBPID=$!
                 sleep 3
                 $LOCAL_RUN_CMD_SEND | $LOCAL_RUN_CMD_MBUFFER
-                wait $SUBPID
-                for stage in "${PIPESTATUS[@]}"; do
+                LOCAL_RET=( "${PIPESTATUS[@]}" )
+                LOCAL_CMD_SUCCESS=1
+                for stage in "${LOCAL_RET[@]}"; do
                     if [ "$stage" -ne 0 ]; then
-                        log "Error: Backing up \"$DATASET@$LOCAL_SNAP\" failed."
-                        log "Aborting."
-                        exit $SEND_RECV_FAIL
+                        LOCAL_CMD_SUCCESS=0
                     fi
                 done
+                if [ "$LOCAL_CMD_SUCCESS" -eq 0 ]; then
+                    log "Error: Backing up \"$DATASET@$LOCAL_SNAP\" failed."
+                    log "Aborting."
+                    kill $SUBPID
+                    exit $SEND_RECV_FAIL
+                else
+                    wait $SUBPID
+                fi
             fi
         fi
     fi
@@ -462,7 +469,7 @@ parse_config_file_arg() {
     done
 }
 
-log "ZFS Backup Manager v0.0.2 Starting..."
+log "ZFS Backup Manager v0.0.3 Starting..."
 
 # Need to parse config file argument first since command line options take precedence
 parse_config_file_arg "$@"
