@@ -124,6 +124,7 @@ get_lock () {
 
     echo $$ > "$LOCK_FILE"
 
+    #shellcheck disable=SC2320
     if [ $? -ne 0 ]; then
         log "Error: Lock file could not be written."
         log "Aborting."
