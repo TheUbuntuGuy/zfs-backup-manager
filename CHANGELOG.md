@@ -1,3 +1,13 @@
+## v0.0.5
+- Fixed bug where a failure in only the receiving side of a backup operation using mbuffer was not reported
+- Added support for mbuffer --tcptimeo option
+
+## v0.0.4
+- Added compatibility with FreeBSD mbuffer
+
+## v0.0.3
+- Fixed bug where a failure in only the sending side of a local backup was not reported
+
 ## v0.0.2
 - Fixed bug where a failure in the local ZFS send command would not return a failure status
 - Added support for configuration files (no longer need to edit the script header to change settings)

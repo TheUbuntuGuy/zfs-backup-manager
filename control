@@ -1,5 +1,5 @@
 Package: zfs-backup-manager
-Version: 0.0.2
+Version: 0.0.5
 Section: utils
 Priority: optional
 Architecture: amd64
